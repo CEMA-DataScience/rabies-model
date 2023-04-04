@@ -676,7 +676,7 @@ timeplot<- changevac1 %>%
   mutate(years=calyear-2023)
 
 timeplot4 <- timeplot %>%
-  mutate(type="Combined vaccination and dog management")
+  mutate(type="Combined vaccination and dog population management")
 
 ggplot(timeplot, aes(y=years, x=coverage))+
   geom_line()+
@@ -696,5 +696,313 @@ ggplot(timeplot_all, aes(y=years, x=coverage, color=type))+
   theme_bw()+ xlim(0,100)+
   labs(y="Time to eliminate(Years)", x="Vaccination coverage (percent)", color="")+
   scale_color_brewer(palette="Set1")
+
+```
+
+#### Annual vaccination (100 days) with dog population management
+
+```{r, echo=F}
+seiv <- function(times,y,parms){
+  with(c(as.list(y),parms),{
+   
+    N <- S + E + I + V 
+    if(type==1){
+  immunization_rate <- ifelse(times/365-floor(times/365)<0.272 & vaccination_coverage>=0.02,1/period_waves*vaccination_coverage,0.025/365)}
+  else if(type==2){
+    immunization_rate <-  1/365*vaccination_coverage}
+  else if(type==3){
+    immunization_rate =  ifelse(times/365-floor(times/365)<round(period_waves/365,3) &
+                                  vaccination_coverage>=0.02,
+                                1/period_waves*vaccination_coverage,vaccination_coverage/365)}
+
+
+    
+      
+    densityDep=TRUE # indicated that transmission is density-dependent
+    lambda <-  ifelse(densityDep,beta*I/N0,beta*I/N)
+    carrying_capacity=9000000 # carrying capacity
+  
+     dS <- birth_rate*(S+V) - natural_mortality* (1+N/carrying_capacity) * S - immunization_rate * S - lambda * S + loss_immunity * V  # We assume that mortality increases with increasing population size
+    dE <- lambda * S - natural_mortality* (1+N/carrying_capacity) * E  - progression_rate * E
+    dI <- importation_rate + progression_rate * E - natural_mortality* (1+N/carrying_capacity) * I - rabies_mortality * I
+    dV <- immunization_rate * S - natural_mortality* (1+N/carrying_capacity) * V - loss_immunity * V
+   
+    return(list(c(dS, dE, dI, dV)))
+  })
+}
+
+
+time <- 0  # Start time
+N0 <- 8063804 # Start population 
+
+popInit <- c(S = 7055804,
+             E = 5000,
+             I = 3000,
+             V = 1000000)     #Initial conditions estimated from the data  
+
+values <- c(beta = 0.4, 
+            progression_rate = 1 / 22, 
+            rabies_mortality = 1/ 3.1, 
+            birth_rate = 0.002, 
+            natural_mortality = 1/(1.85*365), # per capita backgroud mortality rate
+            importation_rate = 0, # total importation rate (infectious dogs)
+            vaccination_coverage = 0.70, # vac coverage at the end of 100 days campaign
+            efficacy = 1, # vaccine efficacy (proportion)
+            carrying_capacity=300000, # carrying capacity
+            loss_immunity=1/(3*365),
+            type=1, #1=annual waves, 2=annual coverage, 3=combined
+            period_waves=100
+            ) # loss of immunity from vaccination over time
+   
+times <- seq(0,(365*20),1)  # the model will run for a total of 20 years 
+
+ts.seiv <- data.frame(lsoda(
+  y = popInit,               # Initial conditions for population
+  times = times,             # Timepoints for evaluation
+  func = seiv,                   # Function to evaluate
+  parms = values                # Vector of parameters
+))
+
+
+
+ts.seiv$year=ts.seiv$time/365
+ts.seiv$calyear=ts.seiv$year+2023
+
+
+ts.seiv$Ntot <- ts.seiv$S + ts.seiv$E + ts.seiv$I + ts.seiv$V
+# convert data to long format for visualization
+ts.seiv1 <- ts.seiv %>%
+  pivot_longer(c(S,E,I,V), names_to="compartments", values_to="values") %>%
+  mutate(compartments=recode(compartments, "S"="Susceptible", "E"="Exposed", "I"="Infectious", "V"="Vaccinated")) %>%
+  group_by(calyear) %>%
+  mutate(Ntot=sum(values)) %>%
+  ungroup()
+
+
+# This code creates a loop over different levels of vaccination coverage to estimate:
+# (A) The number of infectious dogs over time
+# (B) The year of elimination (defined as <1 infectious dog)
+
+changevac = data.frame(Nr=rep(NA,length(times)))
+
+for (i in c(0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0)) {
+
+  values["vaccination_coverage"]=i
+  
+ts.seiv <- data.frame(lsoda(
+  y = popInit,               # Initial conditions for population
+  times = times,             # Timepoints for evaluation
+  func = seiv,                   # Function to evaluate
+  parms = values                # Vector of parameters
+))
+changevac2 <- cbind(changevac, i=ts.seiv$I)
+changevac <- changevac2
+}
+
+ts.seiv$calyear=ts.seiv$time/365+2023
+
+changevac <- cbind(ts.seiv$calyear,changevac)
+
+names(changevac) = c("calyear", "none",0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0)
+
+changevac1 <- changevac %>%
+  pivot_longer(c(3:12), names_to="coverage", values_to="proportion") %>%
+  mutate(coverage=as.numeric(coverage)) %>%
+  mutate(coverage1=coverage*100)
+
+ggplot(changevac1, aes(x=calyear,y=proportion, color=factor(coverage1)))+
+  labs(x="Year", y="Number of infectious dogs", color="% coverage")+
+  geom_line()+theme_bw()+geom_vline(xintercept = 2030, linetype=2)+scale_color_brewer(palette="Paired")
+
+
+```
+
+```{r, echo=F}
+### Plot of the year of elimination ###
+timeplot<- changevac1 %>%
+  filter(proportion<1) %>%
+  mutate(coverage=coverage*100)%>%
+  arrange(calyear)%>%
+  group_by(coverage)%>%
+  slice_head(n=1)%>%
+  ungroup()%>%
+  mutate(years=calyear-2023)
+
+timeplot5 <- timeplot %>%
+  mutate(type="Annual vaccination and dog population management")
+
+ggplot(timeplot, aes(y=years, x=coverage))+
+  geom_line()+
+  geom_point()+
+  theme_bw()+ xlim(0,100)+
+  labs(y="Time to eliminate(Years)",x="Vaccination coverage (percent)")
+
+
+```
+
+```{r, echo=F}
+
+timeplot_all <-rbind(timeplot1, timeplot2, timeplot3, timeplot4, timeplot5)
+
+ggplot(timeplot_all, aes(y=years, x=coverage, color=type))+
+  geom_line()+
+  geom_point()+
+  theme_bw()+ xlim(0,100)+
+  labs(y="Time to eliminate(Years)", x="Vaccination coverage (percent)", color="")+
+  scale_color_brewer(palette="Set1")
+
+
+```
+
+#### Continuous vaccination with dog population management
+
+```{r, echo=F}
+seiv <- function(times,y,parms){
+  with(c(as.list(y),parms),{
+   
+    N <- S + E + I + V 
+    if(type==1){
+  immunization_rate <- ifelse(times/365-floor(times/365)<0.272 & vaccination_coverage>=0.02,1/period_waves*vaccination_coverage,0.025/365)}
+  else if(type==2){
+    immunization_rate <-  1/365*vaccination_coverage}
+  else if(type==3){
+    immunization_rate =  ifelse(times/365-floor(times/365)<round(period_waves/365,3) &
+                                  vaccination_coverage>=0.02,
+                                1/period_waves*vaccination_coverage,vaccination_coverage/365)}
+
+
+    
+      
+    densityDep=TRUE # indicated that transmission is density-dependent
+    lambda <-  ifelse(densityDep,beta*I/N0,beta*I/N)
+    carrying_capacity=9000000 # carrying capacity
+  
+     dS <- birth_rate*(S+V) - natural_mortality* (1+N/carrying_capacity) * S - immunization_rate * S - lambda * S + loss_immunity * V  # We assume that mortality increases with increasing population size
+    dE <- lambda * S - natural_mortality* (1+N/carrying_capacity) * E  - progression_rate * E
+    dI <- importation_rate + progression_rate * E - natural_mortality* (1+N/carrying_capacity) * I - rabies_mortality * I
+    dV <- immunization_rate * S - natural_mortality* (1+N/carrying_capacity) * V - loss_immunity * V
+   
+    return(list(c(dS, dE, dI, dV)))
+  })
+}
+
+
+time <- 0  # Start time
+N0 <- 8063804 # Start population 
+
+popInit <- c(S = 7055804,
+             E = 5000,
+             I = 3000,
+             V = 1000000)     #Initial conditions estimated from the data  
+
+values <- c(beta = 0.4, 
+            progression_rate = 1 / 22, 
+            rabies_mortality = 1/ 3.1, 
+            birth_rate = 0.002, 
+            natural_mortality = 1/(1.85*365), # per capita backgroud mortality rate
+            importation_rate = 0, # total importation rate (infectious dogs)
+            vaccination_coverage = 0.70, # vac coverage at the end of 100 days campaign
+            efficacy = 1, # vaccine efficacy (proportion)
+            carrying_capacity=300000, # carrying capacity
+            loss_immunity=1/(3*365),
+            type=2, #1=annual waves, 2=annual coverage, 3=combined
+            period_waves=100
+            ) # loss of immunity from vaccination over time
+   
+times <- seq(0,(365*20),1)  # the model will run for a total of 20 years 
+
+ts.seiv <- data.frame(lsoda(
+  y = popInit,               # Initial conditions for population
+  times = times,             # Timepoints for evaluation
+  func = seiv,                   # Function to evaluate
+  parms = values                # Vector of parameters
+))
+
+
+
+ts.seiv$year=ts.seiv$time/365
+ts.seiv$calyear=ts.seiv$year+2023
+
+
+ts.seiv$Ntot <- ts.seiv$S + ts.seiv$E + ts.seiv$I + ts.seiv$V
+# convert data to long format for visualization
+ts.seiv1 <- ts.seiv %>%
+  pivot_longer(c(S,E,I,V), names_to="compartments", values_to="values") %>%
+  mutate(compartments=recode(compartments, "S"="Susceptible", "E"="Exposed", "I"="Infectious", "V"="Vaccinated")) %>%
+  group_by(calyear) %>%
+  mutate(Ntot=sum(values)) %>%
+  ungroup()
+
+
+# This code creates a loop over different levels of vaccination coverage to estimate:
+# (A) The number of infectious dogs over time
+# (B) The year of elimination (defined as <1 infectious dog)
+
+changevac = data.frame(Nr=rep(NA,length(times)))
+
+for (i in c(0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0)) {
+
+  values["vaccination_coverage"]=i
+  
+ts.seiv <- data.frame(lsoda(
+  y = popInit,               # Initial conditions for population
+  times = times,             # Timepoints for evaluation
+  func = seiv,                   # Function to evaluate
+  parms = values                # Vector of parameters
+))
+changevac2 <- cbind(changevac, i=ts.seiv$I)
+changevac <- changevac2
+}
+
+ts.seiv$calyear=ts.seiv$time/365+2023
+
+changevac <- cbind(ts.seiv$calyear,changevac)
+
+names(changevac) = c("calyear", "none",0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0)
+
+changevac1 <- changevac %>%
+  pivot_longer(c(3:12), names_to="coverage", values_to="proportion") %>%
+  mutate(coverage=as.numeric(coverage)) %>%
+  mutate(coverage1=coverage*100)
+
+ggplot(changevac1, aes(x=calyear,y=proportion, color=factor(coverage1)))+
+  labs(x="Year", y="Number of infectious dogs", color="% coverage")+
+  geom_line()+theme_bw()+geom_vline(xintercept = 2030, linetype=2)+scale_color_brewer(palette="Paired")
+
+
+
+```
+
+```{r, echo=F}
+timeplot<- changevac1 %>%
+  filter(proportion<1) %>%
+  mutate(coverage=coverage*100)%>%
+  arrange(calyear)%>%
+  group_by(coverage)%>%
+  slice_head(n=1)%>%
+  ungroup()%>%
+  mutate(years=calyear-2023)
+
+timeplot6 <- timeplot %>%
+  mutate(type="Continuous vaccination and dog population management")
+
+ggplot(timeplot, aes(y=years, x=coverage))+
+  geom_line()+
+  geom_point()+
+  theme_bw()+ xlim(0,100)+
+  labs(y="Time to eliminate(Years)",x="Vaccination coverage (percent)")
+
+```
+
+```{r, echo=F}
+timeplot_all <-rbind(timeplot1, timeplot2, timeplot3, timeplot4, timeplot5, timeplot6)
+
+ggplot(timeplot_all, aes(y=years, x=coverage, color=type))+
+  geom_line()+
+  geom_point()+
+  theme_bw()+ xlim(0,100)+
+  labs(y="Time to eliminate(Years)", x="Vaccination coverage (percent)", color="")+
+  scale_color_brewer(palette="Set1")
+
 
 ```
