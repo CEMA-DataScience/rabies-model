@@ -50,6 +50,8 @@ The parameters for this model are:
 
 -   loss_immunity - the rate at which dogs loose immunity afforded by prior vaccination
 
+-   Culling rate - the number of infectious dogs removed from the population divided by the total number of infectious dogs
+
 #### Vaccination in annual waves (100 days at the beginning of the year)
 
 ```{r, include=F}
@@ -88,7 +90,7 @@ seiv <- function(times,y,parms){
   
      dS <- birth_rate*(S+V) - natural_mortality* (1+N/carrying_capacity) * S - immunization_rate * S - lambda * S + loss_immunity * V  # We assume that mortality increases with increasing population size
     dE <- lambda * S - natural_mortality* (1+N/carrying_capacity) * E  - progression_rate * E
-    dI <- importation_rate + progression_rate * E - natural_mortality* (1+N/carrying_capacity) * I - rabies_mortality * I
+    dI <- importation_rate + progression_rate * E - natural_mortality* (1+N/carrying_capacity) * I - rabies_mortality * I - culling_rate * I
     dV <- immunization_rate * S - natural_mortality* (1+N/carrying_capacity) * V - loss_immunity * V
    
     return(list(c(dS, dE, dI, dV)))
@@ -116,8 +118,9 @@ values <- c(beta = 0.4,
             carrying_capacity=300000, # carrying capacity
             loss_immunity=1/(3*365),
             type=1, #1=annual waves, 2=annual coverage, 3=combined
-            period_waves=100
-            ) # loss of immunity from vaccination over time
+            period_waves=100,
+            # loss of immunity from vaccination over time
+            culling_rate = 0.5)
    
 ```
 
@@ -259,8 +262,8 @@ seiv <- function(times,y,parms){
   
      dS <- birth_rate*(S+V) - natural_mortality* (1+N/carrying_capacity) * S - immunization_rate * S - lambda * S + loss_immunity * V  # We assume that mortality increases with increasing population size
     dE <- lambda * S - natural_mortality* (1+N/carrying_capacity) * E  - progression_rate * E
-    # dI <- importation_rate + progression_rate * E - natural_mortality* (1+N/carrying_capacity) * I - rabies_mortality * I - culling_rate * I
-    dI <- importation_rate + progression_rate * E - natural_mortality* (1+N/carrying_capacity) * I - rabies_mortality * I
+     dI <- importation_rate + progression_rate * E - natural_mortality* (1+N/carrying_capacity) * I - rabies_mortality * I - culling_rate * I
+    #dI <- importation_rate + progression_rate * E - natural_mortality* (1+N/carrying_capacity) * I - rabies_mortality * I
     dV <- immunization_rate * S - natural_mortality* (1+N/carrying_capacity) * V - loss_immunity * V
    
     return(list(c(dS, dE, dI, dV)))
@@ -287,8 +290,9 @@ values <- c(beta = 0.4,
             carrying_capacity=300000, # carrying capacity
             loss_immunity=1/(3*365),
             type=2, #1=annual waves, 2=annual coverage, 3=combined
-            period_waves=100
-            ) # loss of immunity from vaccination over time
+            period_waves=100,
+             # loss of immunity from vaccination over time
+            culling_rate = 0.5)
    
 times <- seq(0,(365*20),1)  # the model will run for a total of 20 years 
 
@@ -407,8 +411,8 @@ seiv <- function(times,y,parms){
   
      dS <- birth_rate*(S+V) - natural_mortality* (1+N/carrying_capacity) * S - immunization_rate * S - lambda * S + loss_immunity * V  # We assume that mortality increases with increasing population size
     dE <- lambda * S - natural_mortality* (1+N/carrying_capacity) * E  - progression_rate * E
-    # dI <- importation_rate + progression_rate * E - natural_mortality* (1+N/carrying_capacity) * I - rabies_mortality * I - culling_rate * I
-    dI <- importation_rate + progression_rate * E - natural_mortality* (1+N/carrying_capacity) * I - rabies_mortality * I 
+     dI <- importation_rate + progression_rate * E - natural_mortality* (1+N/carrying_capacity) * I - rabies_mortality * I - culling_rate * I
+    #dI <- importation_rate + progression_rate * E - natural_mortality* (1+N/carrying_capacity) * I - rabies_mortality * I 
     dV <- immunization_rate * S - natural_mortality* (1+N/carrying_capacity) * V - loss_immunity * V
    
     return(list(c(dS, dE, dI, dV)))
@@ -571,8 +575,8 @@ seiv <- function(times,y,parms){
   
      dS <- birth_rate*(S+V) - natural_mortality* (1+N/carrying_capacity) * S - immunization_rate * S - lambda * S + loss_immunity * V  # We assume that mortality increases with increasing population size
     dE <- lambda * S - natural_mortality* (1+N/carrying_capacity) * E  - progression_rate * E
-    dI <- importation_rate + progression_rate * E - natural_mortality* (1+N/carrying_capacity) * I - rabies_mortality * I
-    # dI <- importation_rate + progression_rate * E - natural_mortality* (1+N/carrying_capacity) * I - rabies_mortality * I - culling rate
+    #dI <- importation_rate + progression_rate * E - natural_mortality* (1+N/carrying_capacity) * I - rabies_mortality * I
+     dI <- importation_rate + progression_rate * E - natural_mortality* (1+N/carrying_capacity) * I - rabies_mortality * I - culling_rate * I
     dV <- immunization_rate * S - natural_mortality* (1+N/carrying_capacity) * V - loss_immunity * V
    
     return(list(c(dS, dE, dI, dV)))
@@ -599,8 +603,9 @@ values <- c(beta = 0.4,
             carrying_capacity=300000, # carrying capacity
             loss_immunity=1/(3*365),
             type=3, #1=annual waves, 2=annual coverage, 3=combined
-            period_waves=100
-            ) # loss of immunity from vaccination over time
+            period_waves=100,
+             # loss of immunity from vaccination over time
+            culling_rate = 0.5)
    
 times <- seq(0,(365*20),1)  # the model will run for a total of 20 years 
 
@@ -725,7 +730,7 @@ seiv <- function(times,y,parms){
   
      dS <- birth_rate*(S+V) - natural_mortality* (1+N/carrying_capacity) * S - immunization_rate * S - lambda * S + loss_immunity * V  # We assume that mortality increases with increasing population size
     dE <- lambda * S - natural_mortality* (1+N/carrying_capacity) * E  - progression_rate * E
-    dI <- importation_rate + progression_rate * E - natural_mortality* (1+N/carrying_capacity) * I - rabies_mortality * I
+    dI <- importation_rate + progression_rate * E - natural_mortality* (1+N/carrying_capacity) * I - rabies_mortality * I - culling_rate * I
     dV <- immunization_rate * S - natural_mortality* (1+N/carrying_capacity) * V - loss_immunity * V
    
     return(list(c(dS, dE, dI, dV)))
@@ -752,8 +757,8 @@ values <- c(beta = 0.4,
             carrying_capacity=300000, # carrying capacity
             loss_immunity=1/(3*365),
             type=1, #1=annual waves, 2=annual coverage, 3=combined
-            period_waves=100
-            ) # loss of immunity from vaccination over time
+            period_waves=100, # loss of immunity from vaccination over time
+            culling_rate = 0.5)
    
 times <- seq(0,(365*20),1)  # the model will run for a total of 20 years 
 
@@ -880,7 +885,7 @@ seiv <- function(times,y,parms){
   
      dS <- birth_rate*(S+V) - natural_mortality* (1+N/carrying_capacity) * S - immunization_rate * S - lambda * S + loss_immunity * V  # We assume that mortality increases with increasing population size
     dE <- lambda * S - natural_mortality* (1+N/carrying_capacity) * E  - progression_rate * E
-    dI <- importation_rate + progression_rate * E - natural_mortality* (1+N/carrying_capacity) * I - rabies_mortality * I
+    dI <- importation_rate + progression_rate * E - natural_mortality* (1+N/carrying_capacity) * I - rabies_mortality * I - culling_rate * I
     dV <- immunization_rate * S - natural_mortality* (1+N/carrying_capacity) * V - loss_immunity * V
    
     return(list(c(dS, dE, dI, dV)))
@@ -907,8 +912,9 @@ values <- c(beta = 0.4,
             carrying_capacity=300000, # carrying capacity
             loss_immunity=1/(3*365),
             type=2, #1=annual waves, 2=annual coverage, 3=combined
-            period_waves=100
-            ) # loss of immunity from vaccination over time
+            period_waves=100,
+            # loss of immunity from vaccination over time
+            culling_rate = 0.5)
    
 times <- seq(0,(365*20),1)  # the model will run for a total of 20 years 
 
